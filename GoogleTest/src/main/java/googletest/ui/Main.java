@@ -30,7 +30,12 @@ public class Main {
 				"C:\\Users\\Luis\\OneDrive - Universidad Icesi\\Instaladores\\chromedriver.exe");
 		driver = new ChromeDriver();
 
-		cargarPaginaEntel(driver);
+		driver.get("https://miportal.entel.cl/");
+//		posible sleep
+		boolean primeraVez = true;
+
+//		Iteraciones mientras lee el excel
+
 		String url = driver.getCurrentUrl();
 
 		iniciarSesion(driver, url);
@@ -40,7 +45,8 @@ public class Main {
 		String saldoString = driver.findElement(By.xpath("//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2"))
 				.getText();
 		int saldoInt = obtenerValorEnInt(saldoString);
-		if (valorCompra == 0) {
+		if (primeraVez) {
+			primeraVez = false;
 			seleccionarBolsa(driver, url);
 			String total = driver.findElement(By.xpath("//*[@id=\"Voz\"]/div/div[2]/div[2]")).getText();
 			valorCompra = obtenerValorEnInt(total);
@@ -48,6 +54,8 @@ public class Main {
 		if (saldoInt < valorCompra) {
 			cerrarSesion(driver);
 		} else {
+			if (driver.getCurrentUrl().equals(url))
+				seleccionarBolsa(driver, url);
 			terminarProcesoDeCompra(driver, saldoString, url);
 		}
 //		driver.close();
@@ -99,6 +107,9 @@ public class Main {
 	}
 
 	private static void iniciarSesion(WebDriver driver, String url) throws InterruptedException {
+		driver.findElement(By.className("text")).click();
+		String subWin = null;
+		Thread.sleep(600);
 		driver.findElement(By.name("username")).sendKeys("978812784");
 		driver.findElement(By.name("rutt")).sendKeys("164858189");
 		driver.findElement(By.name("password")).sendKeys("1536");
@@ -107,13 +118,6 @@ public class Main {
 			Thread.sleep(1000);
 		driver.navigate().refresh();
 		Thread.sleep(2000);
-	}
-
-	private static void cargarPaginaEntel(WebDriver driver) throws InterruptedException {
-		driver.get("https://miportal.entel.cl/");
-		driver.findElement(By.className("text")).click();
-		String subWin = null;
-		Thread.sleep(600);
 	}
 
 }
