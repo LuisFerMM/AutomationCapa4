@@ -15,6 +15,7 @@ public class Chip {
 	private Date fechaInicio;
 	private Date horaCompra;
 	private Date fechaVencimiento;
+	private boolean compraExitosa;
 	
 	public Chip(int numeroLista, int numeroSim, String rut, String clave, int saldo, Date fechaInicio, Date horaCompra,
 			Date fechaVencimiento) {
@@ -46,9 +47,11 @@ public class Chip {
 		DateFormat fechaInicio = new SimpleDateFormat("dd-MMM-aaaa");
 		switch (num) {
 		case GestorDeArchivos.FECHA_INICIO_BOLSA:
-			salida = fechaInicio.format(fechaInicio);
+			if(this.fechaInicio!= null)
+			salida = fechaInicio.format(this.fechaInicio);
 			break;
 		case GestorDeArchivos.HORA_DE_COMPRA:
+			if(this.fechaInicio!= null)
 			salida = horaInicio.format(this.fechaInicio);
 			break;
 		case GestorDeArchivos.N_LISTA:
@@ -66,6 +69,11 @@ public class Chip {
 		case GestorDeArchivos.SALDO_FINAL:
 			salida = saldo+"";
 			break;
+		case GestorDeArchivos.SE_COMPRO:
+			if(compraExitosa)
+			salida = "";
+			else salida = "compra fallida";
+			break;
 		}
 		return salida;
 	}
@@ -73,7 +81,10 @@ public class Chip {
 	public int getSaldo() {
 		return saldo;
 	}
-	public void setSaldo(int saldo) {
+	public void setSaldo(int saldoAnterior, int saldo) {
+		if(saldoAnterior>saldo)
+			compraExitosa = true;
+		else compraExitosa = false;
 		this.saldo = saldo;
 	}
 	public Date getFechaInicio() {

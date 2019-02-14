@@ -1,5 +1,6 @@
 package googletest.ui;
 
+import java.awt.TrayIcon.MessageType;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -15,15 +16,19 @@ import java.util.LinkedList;
 
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFCell;
 import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+import com.sun.corba.se.impl.protocol.giopmsgheaders.Message;
 
 public class GestorDeArchivos {
 
@@ -35,6 +40,7 @@ public class GestorDeArchivos {
 	public static final int FECHA_INICIO_BOLSA = 5;
 	public static final int HORA_DE_COMPRA = 6;
 	public static final int FECHA_VENCE_BOLSA = 7;
+	public static final int SE_COMPRO = 8;
 
 	private File cd;
 	private File excel;
@@ -79,54 +85,63 @@ public class GestorDeArchivos {
 				Date fechaInicio = null, horaInicio = null, fechaVence = null;
 				while (cellIterator.hasNext()) {
 					cell = cellIterator.next();
-						if (cell.getCellType() == Cell.CELL_TYPE_NUMERIC) {
-							DecimalFormat formato = new DecimalFormat("###");
-							switch (cont) {
-							case FECHA_INICIO_BOLSA:
-								fechaInicio = cell.getDateCellValue();
-								break;
-							case FECHA_VENCE_BOLSA:
-								fechaVence = cell.getDateCellValue();
-								break;
-							case HORA_DE_COMPRA:
-								horaInicio = cell.getDateCellValue();
-								break;
-							case N_LISTA:
-								nLista = Integer.parseInt(formato.format(cell.getNumericCellValue()));
-								break;
-							case N_SIM:
-								nSim = Integer.parseInt(formato.format(cell.getNumericCellValue()));
-								break;
-							case RUT:
-//								if (cell.getStringCellValue().contains("k") || cell.getStringCellValue().contains("-"))
-//									rut = cell.getStringCellValue();
-//								else
-									rut = formato.format(cell.getNumericCellValue());
-							case CLAVE:
+					DecimalFormat formato = new DecimalFormat("###");
+					if (cell.getCellType() == Cell.CELL_TYPE_NUMERIC) {
+						switch (cont) {
+						case FECHA_INICIO_BOLSA:
+							fechaInicio = cell.getDateCellValue();
+							break;
+						case FECHA_VENCE_BOLSA:
+							fechaVence = cell.getDateCellValue();
+							break;
+						case HORA_DE_COMPRA:
+							horaInicio = cell.getDateCellValue();
+							break;
+						case N_LISTA:
+							nLista = Integer.parseInt(formato.format(cell.getNumericCellValue()));
+							break;
+						case N_SIM:
+							nSim = Integer.parseInt(formato.format(cell.getNumericCellValue()));
+							break;
+						case RUT:
+							rut = formato.format(cell.getNumericCellValue());
+						case CLAVE:
 //								clave = formato.format(cell.getStringCellValue());
-								clave = formato.format(cell.getNumericCellValue());
-								if (clave.length() < 4)
-									clave = "0" + clave;
-								break;
-							case SALDO_FINAL:
-								saldo = Integer.parseInt(formato.format(cell.getNumericCellValue()));
-								break;
-							}
+							clave = formato.format(cell.getNumericCellValue());
+							if (clave.length() < 4)
+								clave = "0" + clave;
+							break;
+						case SALDO_FINAL:
+							saldo = Integer.parseInt(formato.format(cell.getNumericCellValue()));
+							break;
 						}
+					} else if (cont == RUT && cell.getStringCellValue().length()>2)
+						rut = cell.getStringCellValue();
+					else if (cont == CLAVE && cell.getStringCellValue().length()>2) {
+						clave = cell.getStringCellValue().substring(1);
+						clave = "0" + clave;
+					}
 						cont++;
 				}
 				if (nSim != 0)
 					chips.add(new Chip(nLista, nSim, rut, clave, saldo, fechaInicio, horaInicio, fechaVence));
 			}
 		} catch (Exception e) {
+			JOptionPane.showMessageDialog(new JFrame(), "Error al cargar los datos");
 			e.printStackTrace();
 		}
 		return chips;
 	}
 
 	public void generarExcel() {
-		String nombreArchivo = "Prueba.xlsx";
-		String rutaArchivo = "C:\\Users\\Luis\\OneDrive - Universidad Icesi\\Capa4\\Soporte 2019 ene-feb"
+		String nombreArchivo = "\\"+ JOptionPane.showInputDialog("Escribe el nombre del registro que deseas guardar", "Prueba") +".xlsx";
+		JFileChooser selectorSave = new JFileChooser();
+		selectorSave.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+//		selectorChromeDriver.setCurrentDirectory(File);
+		selectorSave.setDialogTitle("Elige donde quieres guardar tu archivo excel");
+		selectorSave.showDialog(new JFrame(), "Guardar");
+		selectorSave.getSelectedFile();
+		String rutaArchivo = selectorSave.getSelectedFile().getAbsolutePath()
 				+ nombreArchivo;
 		String hoja = "Hoja1";
 
@@ -134,12 +149,12 @@ public class GestorDeArchivos {
 		XSSFSheet hoja1 = libro.createSheet(hoja);
 		// cabecera de la hoja de excel
 		String[] header = new String[] { "N°LISTA", "N° SIM", "RUT", "CLAVE", "SALDO FINAL", "FECHA INICIO BOLSA",
-				"HORA DE COMPRA" };
+				"HORA DE COMPRA", "FECHA VENCE", "SE COMPRÓ" };
 
 		// contenido de la hoja de excel
-		String[][] document = new String[chips.size()][7];
+		String[][] document = new String[chips.size()][9];
 		for (int i = 0; i < chips.size(); i++) {
-			for (int j = 0; j < 7; j++) {
+			for (int j = 0; j < 9; j++) {
 				document[i][j] = chips.get(i).getAtributoPorNumero(j);
 			}
 		}
@@ -177,7 +192,7 @@ public class GestorDeArchivos {
 			fileOuS.flush();
 			fileOuS.close();
 			System.out.println("Archivo Creado");
-
+			JOptionPane.showMessageDialog(new JFrame(), "Archivo generado exitosamente, puede cerrar el browser", "Fin de la operación", JOptionPane.INFORMATION_MESSAGE);
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {

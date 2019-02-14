@@ -19,7 +19,9 @@ import javax.swing.JOptionPane;
 import javax.xml.bind.Validator;
 
 import org.openqa.selenium.By;
+import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 
@@ -33,7 +35,7 @@ public class Compra {
 
 //		Cargar la información de excel con una ventana
 
-		WebDriver driver;
+		WebDriver driver = null;
 
 		GestorDeArchivos gda = new GestorDeArchivos();
 
@@ -53,14 +55,16 @@ public class Compra {
 //		Iteraciones mientras lee el excel
 			for (int i = 0; i < chips.size(); i++) {
 
-				String url = driver.getCurrentUrl();
-
 				try {
+					String url = driver.getCurrentUrl();
+
 					iniciarSesion(driver, url, chips.get(i));
 
 					url = driver.getCurrentUrl();
 
 //		Obtiene el saldo anterior a la compra y valida que no supere el saldo
+					while (!existsElementByXPath(driver, "//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2"))
+						Thread.sleep(1000);
 					String saldoString = driver
 							.findElement(By.xpath("//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2"))
 							.getText();
@@ -68,38 +72,48 @@ public class Compra {
 					if (primeraVez) {
 						primeraVez = false;
 						seleccionarBolsa(driver, url);
+						while (!existsElementByXPath(driver, "//*[@id=\"Voz\"]/div/div[2]/div[2]"))
+							Thread.sleep(600);
 						String total = driver.findElement(By.xpath("//*[@id=\"Voz\"]/div/div[2]/div[2]")).getText();
 						valorCompra = obtenerValorEnInt(total);
 					}
+					Date date = new Date();
 					if (saldoInt < valorCompra) {
 						cerrarSesion(driver);
+						modificarDatosDe(chips.get(i), saldoInt, saldoInt, date);
 					} else {
 						if (driver.getCurrentUrl().equals(url))
 							seleccionarBolsa(driver, url);
 						int nuevoSaldo = terminarProcesoDeCompra(driver, saldoString, url);
 						cerrarSesion(driver);
-						 Date date = new Date();
 						modificarDatosDe(chips.get(i), saldoInt, nuevoSaldo, date);
 					}
 				} catch (InterruptedException e) {
-					e.printStackTrace();
+					gda.generarExcel();
+					JOptionPane.showMessageDialog(new JFrame(), "Error al cargar componentes");
+				} catch (WebDriverException e2) {
+					gda.generarExcel();
+					JOptionPane.showMessageDialog(new JFrame(), "Caída inesperada de internet/servidor");
 				}
 			}
 			gda.generarExcel();
 		}
 		System.exit(0);
-//		driver.close();
+		driver.close();
 	}
 
 	private static void modificarDatosDe(Chip chip, int saldoInt, int nuevoSaldo, Date fechaActual) {
 		String seCompro = "";
-		if(saldoInt == nuevoSaldo) 
+		if (saldoInt == nuevoSaldo)
 			seCompro = "Problema al comprar";
+		chip.setSaldo(saldoInt, nuevoSaldo);
 		DateFormat horaInicio = new SimpleDateFormat("HH:mm");
 		DateFormat fechaInicio = new SimpleDateFormat("dd-MMM-aaaa");
 		chip.setFechaInicio(fechaActual);
 		chip.setHoraCompra(fechaActual);
-		System.out.println(chip.getNumeroLista() + " " + chip.getNumeroSim() + " " + chip.getRut() + " " + chip.getClave() + " " + nuevoSaldo + " " + horaInicio.format(fechaActual) + " " + fechaInicio.format(fechaActual) + " " + seCompro);
+		System.out.println(chip.getNumeroLista() + " " + chip.getNumeroSim() + " " + chip.getRut() + " "
+				+ chip.getClave() + " " + nuevoSaldo + " " + horaInicio.format(fechaActual) + " "
+				+ fechaInicio.format(fechaActual) + " " + seCompro);
 	}
 
 	private static void seleccionarBolsa(WebDriver driver, String url) throws InterruptedException {
@@ -124,34 +138,35 @@ public class Compra {
 	}
 
 	private static void cerrarSesion(WebDriver driver) throws InterruptedException {
-		if(driver.getCurrentUrl().equals("https://miportal.entel.cl/miEntel/mi-cuenta")) {
+		if (driver.getCurrentUrl().equals("https://miportal.entel.cl/miEntel/mi-cuenta")) {
 			driver.findElement(By.xpath("//*[@id=\"myAccountDropDownLink\"]/a/div")).click();
-			Thread.sleep(200);
+			Thread.sleep(400);
 			driver.findElement(By.xpath("//*[@id=\"action-PROFILE_LOGOUT-1\"]/span")).click();
+		} else {
+			driver.findElement(By.xpath("//*[@id=\"header\"]/div/ul/li/a")).click();
+			Thread.sleep(400);
+			driver.findElement(By.id("action-PROFILE_LOGOUT")).click();
 		}
-		else {driver.findElement(By.xpath("//*[@id=\"header\"]/div/ul/li/a")).click();
-		Thread.sleep(200);
-		driver.findElement(By.id("action-PROFILE_LOGOUT")).click();
-		}
-		Thread.sleep(2500);
+		Thread.sleep(2000);
 	}
 
 	private static int terminarProcesoDeCompra(WebDriver driver, String saldoString, String url)
 			throws InterruptedException, ParseException {
 		driver.findElement(By.xpath("//*[@id=\"prepago\"]/div/div[2]/div[2]/div[2]/span[2]/input")).click();
 		driver.findElement(By.xpath("//*[@id=\"prepago\"]/div/div[2]/div[2]/div[2]/span[2]/span[3]")).click();
-									
+
 //		Revisa si la compra se realizó exitosamente
 		Thread.sleep(8000);
 		driver.get("https://miportal.entel.cl/miEntel/mi-cuenta");
-		int times = 3;
-		Thread.sleep(2000);
+		int times = 4;
+		while (!existsElementByXPath(driver, "//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2"))
+			Thread.sleep(2000);
 		String saldoReciente = driver.findElement(By.xpath("//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2"))
 				.getText();
-		while (driver.findElement(By.xpath("//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2"))
-				.getText().equals(saldoString) && times > 0) {
+		while (driver.findElement(By.xpath("//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2")).getText()
+				.equals(saldoString) && times > 0) {
 			driver.get("https://miportal.entel.cl/miEntel/mi-cuenta");
-			Thread.sleep(2000);
+			Thread.sleep(2500);
 			times--;
 		}
 		saldoReciente = driver.findElement(By.xpath("//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2"))
@@ -160,17 +175,60 @@ public class Compra {
 	}
 
 	private static void iniciarSesion(WebDriver driver, String url, Chip entrada) throws InterruptedException {
+		while (!existsElementByClass(driver, "text"))
+			Thread.sleep(600);
 		driver.findElement(By.className("text")).click();
 		String subWin = null;
-		Thread.sleep(1000);
+//		while(!existsElementByName(driver, "username"))
+		Thread.sleep(800);
 		driver.findElement(By.name("username")).sendKeys("" + entrada.getNumeroSim());
 		driver.findElement(By.name("rutt")).sendKeys("" + entrada.getRut());
 		driver.findElement(By.name("password")).sendKeys("" + entrada.getClave());
+		Thread.sleep(400);
 		driver.findElement(By.id("action-PROFILE_LOGIN")).click();
-		while (driver.getCurrentUrl().equals(url))
-			Thread.sleep(1000);
+		int cont = 6;
+		while (driver.getCurrentUrl().equals(url) && cont > 0) {
+			Thread.sleep(2000);
+			cont--;
+		}
 		driver.navigate().refresh();
-		Thread.sleep(2600);
+		if (driver.getCurrentUrl().equals(url))
+			Thread.sleep(2000);
 	}
 
+	private static boolean existsElementByClass(WebDriver driver, String className) {
+		try {
+			driver.findElement(By.className(className));
+		} catch (NoSuchElementException e) {
+			return false;
+		}
+		return true;
+	}
+
+	private static boolean existsElementByXPath(WebDriver driver, String xpath) {
+		try {
+			driver.findElement(By.xpath(xpath));
+		} catch (NoSuchElementException e) {
+			return false;
+		}
+		return true;
+	}
+
+	private static boolean existsElementByName(WebDriver driver, String name) {
+		try {
+			driver.findElement(By.name(name));
+		} catch (NoSuchElementException e) {
+			return false;
+		}
+		return true;
+	}
+
+	private static boolean existsElementById(WebDriver driver, String id) {
+		try {
+			driver.findElement(By.id(id));
+		} catch (NoSuchElementException e) {
+			return false;
+		}
+		return true;
+	}
 }
