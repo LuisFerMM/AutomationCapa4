@@ -105,8 +105,8 @@ public class GestorDeArchivos {
 							break;
 						case RUT:
 							rut = formato.format(cell.getNumericCellValue());
+							break;
 						case CLAVE:
-							// clave = formato.format(cell.getStringCellValue());
 							clave = formato.format(cell.getNumericCellValue());
 							if (clave.length() < 2)
 								clave = "0" + clave;
@@ -114,17 +114,44 @@ public class GestorDeArchivos {
 								clave = "0" + clave;
 							if (clave.length() < 4)
 								clave = "0" + clave;
-
 							break;
 						case SALDO_FINAL:
 							saldo = Integer.parseInt(formato.format(cell.getNumericCellValue()));
 							break;
 						}
-					} else if (cont == RUT && cell.getStringCellValue().length() > 2)
-						rut = cell.getStringCellValue();
-					else if (cont == CLAVE && cell.getStringCellValue().length() > 2) {
-						clave = cell.getStringCellValue().substring(1);
-						clave = "0" + clave;
+					} else if (cell.getCellType() == CellType.STRING) {
+						switch (cont) {
+						case N_LISTA:
+							if (cell.getStringCellValue().length() > 0 && cell.getStringCellValue().length() < 4)
+								nLista = Integer.parseInt(cell.getStringCellValue());
+							break;
+						case N_SIM:
+							if (cell.getStringCellValue().length() == 9)
+								nSim = Integer.parseInt(cell.getStringCellValue());
+							break;
+						case RUT:
+							if (cell.getStringCellValue().length() > 2)
+								rut = cell.getStringCellValue();
+							break;
+						case CLAVE:
+							if (cell.getStringCellValue().length() > 0) {
+								clave = cell.getStringCellValue();
+								if (clave.length() < 2)
+									clave = "0" + clave;
+								if (clave.length() < 3)
+									clave = "0" + clave;
+								if (clave.length() < 4)
+									clave = "0" + clave;
+								if (clave.startsWith("O") || clave.startsWith("o")) {
+									clave = "0" + clave.substring(1);
+								}
+							}
+							break;
+						case SALDO_FINAL:
+							if (cell.getStringCellValue().length() > 3 && cell.getStringCellValue().length() < 6)
+								saldo = Integer.parseInt(formato.format(cell.getNumericCellValue()));
+							break;
+						}
 					}
 					cont++;
 				}

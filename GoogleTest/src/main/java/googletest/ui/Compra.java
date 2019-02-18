@@ -143,6 +143,8 @@ public class Compra {
 		driver.findElement(By.xpath("//*[@id=\"mobileAssetBalance\"]/div/div/a[2]/span")).click();
 		while (driver.getCurrentUrl().equals(url))
 			Thread.sleep(600);
+		while(!existsElementByXPath(driver, "//*[@id=\"tab_prepago\"]/div/a"))
+			Thread.sleep(400);
 		driver.findElement(By.xpath("//*[@id=\"tab_prepago\"]/div/a")).click();
 		driver.findElement(By.xpath("//*[@id=\"prepago\"]/div/div[1]/div[2]/div[1]/form/div/div[3]/div/input")).click();
 		driver.findElement(By.xpath("//*[@id=\"prepago\"]/div/div[1]/div[2]/div[1]/form/div/div[1]/div/input")).click();
@@ -180,27 +182,25 @@ public class Compra {
 
 		// Revisa si la compra se realizó exitosamente
 		Thread.sleep(9000);
-		driver.get("https://miportal.entel.cl/miEntel/mi-cuenta");
 		int times = 4;
-		// poner a prueba el existselementBy
-		while (!existsElementByXPath(driver, "//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2"))
-			Thread.sleep(400);
-		String saldoReciente = driver.findElement(By.xpath("//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2"))
-				.getText();
 		// lo de abajo lanza excepción, hay que buscar el elemento antes de usarlo
-		while (driver.findElement(By.xpath("//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2")).getText()
-				.equals(saldoString) && times > 0) {
+		do {
 			driver.get("https://miportal.entel.cl/miEntel/mi-cuenta");
-			Thread.sleep(3000);
 			while (!existsElementByXPath(driver, "//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2"))
 				Thread.sleep(400);
+			if(!driver.findElement(By.xpath("//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2")).getText()
+					.equals(saldoString))
+				break;
+			Thread.sleep(3000);
 			times--;
 		}
-		saldoReciente = driver.findElement(By.xpath("//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2"))
+		while (times > 0);
+		String saldoReciente = driver.findElement(By.xpath("//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2"))
 				.getText();
 		return obtenerValorEnInt(saldoReciente);
 	}
-
+//	/html/body/h1 <= bad request
+//	/html/body/p
 	private static boolean iniciarSesion(WebDriver driver, String url, Chip entrada) throws InterruptedException {
 		while (!existsElementByClass(driver, "text"))
 			Thread.sleep(600);
