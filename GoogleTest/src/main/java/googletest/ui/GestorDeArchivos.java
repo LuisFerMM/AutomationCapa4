@@ -49,7 +49,7 @@ public class GestorDeArchivos {
 	public File getFileChromeDriver() {
 		JFileChooser selectorChromeDriver = new JFileChooser();
 		selectorChromeDriver.setFileSelectionMode(JFileChooser.FILES_ONLY);
-//		selectorChromeDriver.setCurrentDirectory(File);
+		// selectorChromeDriver.setCurrentDirectory(File);
 		selectorChromeDriver.setDialogTitle("Elige el archivo chromedriver.exe");
 		selectorChromeDriver.showDialog(new JFrame(), "Seleccionar Driver");
 		return cd = selectorChromeDriver.getSelectedFile();
@@ -86,7 +86,7 @@ public class GestorDeArchivos {
 				while (cellIterator.hasNext()) {
 					cell = cellIterator.next();
 					DecimalFormat formato = new DecimalFormat("###");
-					if (cell.getCellType() == Cell.CELL_TYPE_NUMERIC) {
+					if (cell.getCellType() == CellType.NUMERIC) {
 						switch (cont) {
 						case FECHA_INICIO_BOLSA:
 							fechaInicio = cell.getDateCellValue();
@@ -106,22 +106,27 @@ public class GestorDeArchivos {
 						case RUT:
 							rut = formato.format(cell.getNumericCellValue());
 						case CLAVE:
-//								clave = formato.format(cell.getStringCellValue());
+							// clave = formato.format(cell.getStringCellValue());
 							clave = formato.format(cell.getNumericCellValue());
+							if (clave.length() < 2)
+								clave = "0" + clave;
+							if (clave.length() < 3)
+								clave = "0" + clave;
 							if (clave.length() < 4)
 								clave = "0" + clave;
+
 							break;
 						case SALDO_FINAL:
 							saldo = Integer.parseInt(formato.format(cell.getNumericCellValue()));
 							break;
 						}
-					} else if (cont == RUT && cell.getStringCellValue().length()>2)
+					} else if (cont == RUT && cell.getStringCellValue().length() > 2)
 						rut = cell.getStringCellValue();
-					else if (cont == CLAVE && cell.getStringCellValue().length()>2) {
+					else if (cont == CLAVE && cell.getStringCellValue().length() > 2) {
 						clave = cell.getStringCellValue().substring(1);
 						clave = "0" + clave;
 					}
-						cont++;
+					cont++;
 				}
 				if (nSim != 0)
 					chips.add(new Chip(nLista, nSim, rut, clave, saldo, fechaInicio, horaInicio, fechaVence));
@@ -134,15 +139,15 @@ public class GestorDeArchivos {
 	}
 
 	public void generarExcel() {
-		String nombreArchivo = "\\"+ JOptionPane.showInputDialog("Escribe el nombre del registro que deseas guardar", "Prueba") +".xlsx";
+		String nombreArchivo = "\\"
+				+ JOptionPane.showInputDialog("Escribe el nombre del registro que deseas guardar", "Prueba") + ".xlsx";
 		JFileChooser selectorSave = new JFileChooser();
 		selectorSave.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-//		selectorChromeDriver.setCurrentDirectory(File);
+		// selectorChromeDriver.setCurrentDirectory(File);
 		selectorSave.setDialogTitle("Elige donde quieres guardar tu archivo excel");
 		selectorSave.showDialog(new JFrame(), "Guardar");
 		selectorSave.getSelectedFile();
-		String rutaArchivo = selectorSave.getSelectedFile().getAbsolutePath()
-				+ nombreArchivo;
+		String rutaArchivo = selectorSave.getSelectedFile().getAbsolutePath() + nombreArchivo;
 		String hoja = "Hoja1";
 
 		XSSFWorkbook libro = new XSSFWorkbook();
@@ -176,11 +181,11 @@ public class GestorDeArchivos {
 				} else {// para el contenido
 					XSSFCell cell = row.createCell(j);// se crea las celdas para la contenido, junto con la posición
 					cell.setCellValue(document[i - 1][j]); // se añade el contenido
-//					try {
-//						Integer.parseInt(document[i - 1][j]);
-//						cell.setCellType(CellType.NUMERIC);
-//					} catch (Exception e) {
-//					}
+					// try {
+					// Integer.parseInt(document[i - 1][j]);
+					// cell.setCellType(CellType.NUMERIC);
+					// } catch (Exception e) {
+					// }
 				}
 			}
 		}
@@ -197,7 +202,8 @@ public class GestorDeArchivos {
 			fileOuS.flush();
 			fileOuS.close();
 			System.out.println("Archivo Creado");
-			JOptionPane.showMessageDialog(new JFrame(), "Archivo generado exitosamente", "Fin de la operación", JOptionPane.INFORMATION_MESSAGE);
+			JOptionPane.showMessageDialog(new JFrame(), "Archivo generado exitosamente", "Fin de la operación",
+					JOptionPane.INFORMATION_MESSAGE);
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {

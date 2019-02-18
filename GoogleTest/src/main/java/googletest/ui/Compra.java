@@ -27,7 +27,7 @@ public class Compra {
 
 	public static void main(String[] args) throws ParseException {
 
-//		Cargar la información de excel con una ventana
+		// Cargar la información de excel con una ventana
 
 		WebDriver driver = null;
 
@@ -44,25 +44,26 @@ public class Compra {
 			driver = new ChromeDriver();
 
 			driver.get("https://miportal.entel.cl/");
-//		posible sleep
+			// posible sleep
 			boolean primeraVez = true;
 			boolean terminaCorrectamente = true;
-//		Iteraciones mientras lee el excel
+			// Iteraciones mientras lee el excel
 			for (int i = 0; i < chips.size(); i++) {
 
 				try {
 					Date date = new Date();
 					String url = driver.getCurrentUrl();
 
-					if(!iniciarSesion(driver, url, chips.get(i))) {
-						modificarDatosDe(chips.get(i), chips.get(i).getSaldo(), chips.get(i).getSaldo(), date, "Problema inicio de sesión");
+					if (!iniciarSesion(driver, url, chips.get(i))) {
+						modificarDatosDe(chips.get(i), chips.get(i).getSaldo(), chips.get(i).getSaldo(), date,
+								"Problema inicio de sesión");
 						continue;
 					}
 					url = driver.getCurrentUrl();
 
-//		Obtiene el saldo anterior a la compra y valida que no supere el saldo
+					// Obtiene el saldo anterior a la compra y valida que no supere el saldo
 					while (!existsElementByXPath(driver, "//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2"))
-						Thread.sleep(1000);
+						Thread.sleep(400);
 					String saldoString = driver
 							.findElement(By.xpath("//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2"))
 							.getText();
@@ -97,20 +98,20 @@ public class Compra {
 					Logger registro = Logger.getLogger("MyLog");
 					FileHandler fh;
 
-			        try {
-			            fh = new FileHandler("C:\\Users\\Luis\\OneDrive - Universidad Icesi\\Capa4\\verRegistro", true);
-			            registro.addHandler(fh);
+					try {
+						fh = new FileHandler("C:\\Users\\Luis\\OneDrive - Universidad Icesi\\Capa4\\verRegistro", true);
+						registro.addHandler(fh);
 
-			            SimpleFormatter formatter = new SimpleFormatter();
-			            fh.setFormatter(formatter);
+						SimpleFormatter formatter = new SimpleFormatter();
+						fh.setFormatter(formatter);
 
-			            registro.info(e3.getMessage());
+						registro.info(e3.getMessage());
 
-			        } catch (SecurityException e) {
-			            e.printStackTrace();
-			        } catch (IOException e) {
-			            e.printStackTrace();
-			        }
+					} catch (SecurityException e) {
+						e.printStackTrace();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
 				}
 			}
 			gda.generarExcel();
@@ -121,9 +122,11 @@ public class Compra {
 
 	private static void modificarDatosDe(Chip chip, int saldoInt, int nuevoSaldo, Date fechaActual, String postCompra) {
 		String seCompro = "";
-		if (saldoInt == nuevoSaldo && postCompra.equals("Ok")) {
+		if (saldoInt == nuevoSaldo) {
 			seCompro = "Problema al comprar";
-			postCompra = "Saldo sin descontar";
+			if (postCompra.equals("Ok")) {
+				postCompra = "Saldo sin descontar";
+			}
 		}
 		chip.setSaldo(saldoInt, nuevoSaldo);
 		chip.setPostCompra(postCompra);
@@ -175,21 +178,22 @@ public class Compra {
 		driver.findElement(By.xpath("//*[@id=\"prepago\"]/div/div[2]/div[2]/div[2]/span[2]/input")).click();
 		driver.findElement(By.xpath("//*[@id=\"prepago\"]/div/div[2]/div[2]/div[2]/span[2]/span[3]")).click();
 
-//		Revisa si la compra se realizó exitosamente
-		Thread.sleep(8000);
+		// Revisa si la compra se realizó exitosamente
+		Thread.sleep(9000);
 		driver.get("https://miportal.entel.cl/miEntel/mi-cuenta");
 		int times = 4;
+		// poner a prueba el existselementBy
 		while (!existsElementByXPath(driver, "//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2"))
-			Thread.sleep(2000);
+			Thread.sleep(400);
 		String saldoReciente = driver.findElement(By.xpath("//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2"))
 				.getText();
-		//lo de abajo lanza excepción, hay que buscar el elemento antes de usarlo
+		// lo de abajo lanza excepción, hay que buscar el elemento antes de usarlo
 		while (driver.findElement(By.xpath("//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2")).getText()
 				.equals(saldoString) && times > 0) {
 			driver.get("https://miportal.entel.cl/miEntel/mi-cuenta");
-			Thread.sleep(2500);
-			while(!existsElementByXPath(driver, "//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2"))
-				Thread.sleep(500);
+			Thread.sleep(3000);
+			while (!existsElementByXPath(driver, "//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2"))
+				Thread.sleep(400);
 			times--;
 		}
 		saldoReciente = driver.findElement(By.xpath("//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2"))
@@ -202,10 +206,10 @@ public class Compra {
 			Thread.sleep(600);
 		driver.findElement(By.className("text")).click();
 		String subWin = null;
-//		while(!existsElementByName(driver, "username"))
+		// while(!existsElementByName(driver, "username"))
 		Thread.sleep(800);
 		ingresarDatosDeSesion(driver, entrada, url);
-		
+
 		if (driver.getCurrentUrl().equals(url)) {
 			driver.findElement(By.name("username")).clear();
 			driver.findElement(By.name("rutt")).clear();
