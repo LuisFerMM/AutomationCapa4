@@ -14,8 +14,9 @@ public class Chip {
 	private int saldo;
 	private Date fechaInicio;
 	private Date horaCompra;
+	
 	private Date fechaVencimiento;
-	private boolean compraExitosa;
+	private String postCompra;
 	
 	public Chip(int numeroLista, int numeroSim, String rut, String clave, int saldo, Date fechaInicio, Date horaCompra,
 			Date fechaVencimiento) {
@@ -29,36 +30,49 @@ public class Chip {
 		this.horaCompra = horaCompra;
 		this.fechaVencimiento = fechaVencimiento;
 	}
+	
+	public String getPostCompra() {
+		return postCompra;
+	}
+	
+	public void setPostCompra(String postCompra) {
+		this.postCompra = postCompra;
+	}
+
 	public int getNumeroLista() {
 		return numeroLista;
 	}
+
 	public void setNumeroLista(int numeroLista) {
 		this.numeroLista = numeroLista;
 	}
+
 	public int getNumeroSim() {
 		return numeroSim;
 	}
+
 	public void setNumeroSim(int numeroSim) {
 		this.numeroSim = numeroSim;
 	}
+
 	public String getAtributoPorNumero(int num) {
 		String salida = "";
 		DateFormat horaInicio = new SimpleDateFormat("HH:mm");
-		DateFormat fechaInicio = new SimpleDateFormat("dd-MMM-aaaa");
+		DateFormat fechaInicio = new SimpleDateFormat("dd-MMM-yyyy");
 		switch (num) {
 		case GestorDeArchivos.FECHA_INICIO_BOLSA:
-			if(this.fechaInicio!= null)
-			salida = fechaInicio.format(this.fechaInicio);
+			if (this.fechaInicio != null)
+				salida = fechaInicio.format(this.fechaInicio);
 			break;
 		case GestorDeArchivos.HORA_DE_COMPRA:
-			if(this.fechaInicio!= null)
-			salida = horaInicio.format(this.fechaInicio);
+			if (this.fechaInicio != null)
+				salida = horaInicio.format(this.fechaInicio);
 			break;
 		case GestorDeArchivos.N_LISTA:
-			salida = numeroLista+"";
+			salida = numeroLista + "";
 			break;
 		case GestorDeArchivos.N_SIM:
-			salida = numeroSim+"";
+			salida = numeroSim + "";
 			break;
 		case GestorDeArchivos.RUT:
 			salida = rut;
@@ -67,55 +81,61 @@ public class Chip {
 			salida = clave;
 			break;
 		case GestorDeArchivos.SALDO_FINAL:
-			salida = saldo+"";
+			salida = saldo + "";
 			break;
 		case GestorDeArchivos.SE_COMPRO:
-			if(compraExitosa)
-			salida = "";
-			else salida = "compra fallida";
+			salida = postCompra;
 			break;
 		}
 		return salida;
 	}
-	
+
 	public int getSaldo() {
 		return saldo;
 	}
+
 	public void setSaldo(int saldoAnterior, int saldo) {
-		if(saldoAnterior>saldo)
-			compraExitosa = true;
-		else compraExitosa = false;
 		this.saldo = saldo;
 	}
+
 	public Date getFechaInicio() {
 		return fechaInicio;
 	}
+
 	public void setFechaInicio(Date fechaInicio) {
 		this.fechaInicio = fechaInicio;
 	}
+
 	public Date getHoraCompra() {
 		return horaCompra;
 	}
+
 	public void setHoraCompra(Date horaCompra) {
 		this.horaCompra = horaCompra;
 	}
+
 	public Date getFechaVencimiento() {
 		return fechaVencimiento;
 	}
+
 	public void setFechaVencimiento(Date fechaVencimiento) {
 		this.fechaVencimiento = fechaVencimiento;
 	}
+
 	public String getRut() {
 		return rut;
 	}
+
 	public void setRut(String rut) {
 		this.rut = rut;
 	}
+
 	public String getClave() {
 		return clave;
 	}
+
 	public void setClave(String clave) {
 		this.clave = clave;
 	}
-	
+
 }

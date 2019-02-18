@@ -176,6 +176,11 @@ public class GestorDeArchivos {
 				} else {// para el contenido
 					XSSFCell cell = row.createCell(j);// se crea las celdas para la contenido, junto con la posición
 					cell.setCellValue(document[i - 1][j]); // se añade el contenido
+//					try {
+//						Integer.parseInt(document[i - 1][j]);
+//						cell.setCellType(CellType.NUMERIC);
+//					} catch (Exception e) {
+//					}
 				}
 			}
 		}
@@ -192,7 +197,7 @@ public class GestorDeArchivos {
 			fileOuS.flush();
 			fileOuS.close();
 			System.out.println("Archivo Creado");
-			JOptionPane.showMessageDialog(new JFrame(), "Archivo generado exitosamente, puede cerrar el browser", "Fin de la operación", JOptionPane.INFORMATION_MESSAGE);
+			JOptionPane.showMessageDialog(new JFrame(), "Archivo generado exitosamente", "Fin de la operación", JOptionPane.INFORMATION_MESSAGE);
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {

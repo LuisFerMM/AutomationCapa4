@@ -1,31 +1,25 @@
 package googletest.ui;
 
-import java.awt.AWTException;
-import java.awt.Robot;
 import java.io.File;
+import java.io.IOException;
 import java.text.DateFormat;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.logging.FileHandler;
+import java.util.logging.SimpleFormatter;
+import java.util.logging.Logger;
 
-import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
-import javax.xml.bind.Validator;
 
 import org.openqa.selenium.By;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebDriverException;
-import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
-
-import com.sun.glass.events.KeyEvent;
 
 public class Compra {
 
@@ -52,14 +46,18 @@ public class Compra {
 			driver.get("https://miportal.entel.cl/");
 //		posible sleep
 			boolean primeraVez = true;
+			boolean terminaCorrectamente = true;
 //		Iteraciones mientras lee el excel
 			for (int i = 0; i < chips.size(); i++) {
 
 				try {
+					Date date = new Date();
 					String url = driver.getCurrentUrl();
 
-					iniciarSesion(driver, url, chips.get(i));
-
+					if(!iniciarSesion(driver, url, chips.get(i))) {
+						modificarDatosDe(chips.get(i), chips.get(i).getSaldo(), chips.get(i).getSaldo(), date, "Problema inicio de sesión");
+						continue;
+					}
 					url = driver.getCurrentUrl();
 
 //		Obtiene el saldo anterior a la compra y valida que no supere el saldo
@@ -77,23 +75,42 @@ public class Compra {
 						String total = driver.findElement(By.xpath("//*[@id=\"Voz\"]/div/div[2]/div[2]")).getText();
 						valorCompra = obtenerValorEnInt(total);
 					}
-					Date date = new Date();
 					if (saldoInt < valorCompra) {
 						cerrarSesion(driver);
-						modificarDatosDe(chips.get(i), saldoInt, saldoInt, date);
+						modificarDatosDe(chips.get(i), saldoInt, saldoInt, date, "Saldo insuficiente");
 					} else {
 						if (driver.getCurrentUrl().equals(url))
 							seleccionarBolsa(driver, url);
 						int nuevoSaldo = terminarProcesoDeCompra(driver, saldoString, url);
 						cerrarSesion(driver);
-						modificarDatosDe(chips.get(i), saldoInt, nuevoSaldo, date);
+						modificarDatosDe(chips.get(i), saldoInt, nuevoSaldo, date, "Ok");
 					}
 				} catch (InterruptedException e) {
-					gda.generarExcel();
+					e.printStackTrace();
 					JOptionPane.showMessageDialog(new JFrame(), "Error al cargar componentes");
 				} catch (WebDriverException e2) {
-					gda.generarExcel();
+					e2.printStackTrace();
 					JOptionPane.showMessageDialog(new JFrame(), "Caída inesperada de internet/servidor");
+					break;
+				} catch (Exception e3) {
+					e3.printStackTrace();
+					Logger registro = Logger.getLogger("MyLog");
+					FileHandler fh;
+
+			        try {
+			            fh = new FileHandler("C:\\Users\\Luis\\OneDrive - Universidad Icesi\\Capa4\\verRegistro", true);
+			            registro.addHandler(fh);
+
+			            SimpleFormatter formatter = new SimpleFormatter();
+			            fh.setFormatter(formatter);
+
+			            registro.info(e3.getMessage());
+
+			        } catch (SecurityException e) {
+			            e.printStackTrace();
+			        } catch (IOException e) {
+			            e.printStackTrace();
+			        }
 				}
 			}
 			gda.generarExcel();
@@ -102,13 +119,16 @@ public class Compra {
 		driver.close();
 	}
 
-	private static void modificarDatosDe(Chip chip, int saldoInt, int nuevoSaldo, Date fechaActual) {
+	private static void modificarDatosDe(Chip chip, int saldoInt, int nuevoSaldo, Date fechaActual, String postCompra) {
 		String seCompro = "";
-		if (saldoInt == nuevoSaldo)
+		if (saldoInt == nuevoSaldo && postCompra.equals("Ok")) {
 			seCompro = "Problema al comprar";
+			postCompra = "Saldo sin descontar";
+		}
 		chip.setSaldo(saldoInt, nuevoSaldo);
+		chip.setPostCompra(postCompra);
 		DateFormat horaInicio = new SimpleDateFormat("HH:mm");
-		DateFormat fechaInicio = new SimpleDateFormat("dd-MMM-aaaa");
+		DateFormat fechaInicio = new SimpleDateFormat("dd-MMM-yyyy");
 		chip.setFechaInicio(fechaActual);
 		chip.setHoraCompra(fechaActual);
 		System.out.println(chip.getNumeroLista() + " " + chip.getNumeroSim() + " " + chip.getRut() + " "
@@ -163,10 +183,13 @@ public class Compra {
 			Thread.sleep(2000);
 		String saldoReciente = driver.findElement(By.xpath("//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2"))
 				.getText();
+		//lo de abajo lanza excepción, hay que buscar el elemento antes de usarlo
 		while (driver.findElement(By.xpath("//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2")).getText()
 				.equals(saldoString) && times > 0) {
 			driver.get("https://miportal.entel.cl/miEntel/mi-cuenta");
 			Thread.sleep(2500);
+			while(!existsElementByXPath(driver, "//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2"))
+				Thread.sleep(500);
 			times--;
 		}
 		saldoReciente = driver.findElement(By.xpath("//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2"))
@@ -174,13 +197,28 @@ public class Compra {
 		return obtenerValorEnInt(saldoReciente);
 	}
 
-	private static void iniciarSesion(WebDriver driver, String url, Chip entrada) throws InterruptedException {
+	private static boolean iniciarSesion(WebDriver driver, String url, Chip entrada) throws InterruptedException {
 		while (!existsElementByClass(driver, "text"))
 			Thread.sleep(600);
 		driver.findElement(By.className("text")).click();
 		String subWin = null;
 //		while(!existsElementByName(driver, "username"))
 		Thread.sleep(800);
+		ingresarDatosDeSesion(driver, entrada, url);
+		
+		if (driver.getCurrentUrl().equals(url)) {
+			driver.findElement(By.name("username")).clear();
+			driver.findElement(By.name("rutt")).clear();
+			driver.findElement(By.name("password")).clear();
+			ingresarDatosDeSesion(driver, entrada, url);
+		}
+		driver.navigate().refresh();
+		if (driver.getCurrentUrl().equals(url))
+			return false;
+		return true;
+	}
+
+	private static void ingresarDatosDeSesion(WebDriver driver, Chip entrada, String url) throws InterruptedException {
 		driver.findElement(By.name("username")).sendKeys("" + entrada.getNumeroSim());
 		driver.findElement(By.name("rutt")).sendKeys("" + entrada.getRut());
 		driver.findElement(By.name("password")).sendKeys("" + entrada.getClave());
@@ -191,9 +229,6 @@ public class Compra {
 			Thread.sleep(2000);
 			cont--;
 		}
-		driver.navigate().refresh();
-		if (driver.getCurrentUrl().equals(url))
-			Thread.sleep(2000);
 	}
 
 	private static boolean existsElementByClass(WebDriver driver, String className) {
