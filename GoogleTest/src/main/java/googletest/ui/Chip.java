@@ -14,13 +14,14 @@ public class Chip {
 	private int saldo;
 	private Date fechaInicio;
 	private Date horaCompra;
-	
+	private boolean fueComprado;
 	private Date fechaVencimiento;
 	private String postCompra;
 	
 	public Chip(int numeroLista, int numeroSim, String rut, String clave, int saldo, Date fechaInicio, Date horaCompra,
 			Date fechaVencimiento) {
 		super();
+		fueComprado = false;
 		this.numeroLista = numeroLista;
 		this.numeroSim = numeroSim;
 		this.setRut(rut);
@@ -136,6 +137,14 @@ public class Chip {
 
 	public void setClave(String clave) {
 		this.clave = clave;
+	}
+
+	public boolean fueComprado() {
+		return fueComprado;
+	}
+
+	public void setEstadoCompra(boolean fueComprado) {
+		this.fueComprado = fueComprado;
 	}
 
 }

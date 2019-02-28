@@ -8,6 +8,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.FileHandler;
 import java.util.logging.SimpleFormatter;
 import java.util.logging.Logger;
@@ -42,6 +43,7 @@ public class Compra {
 			ArrayList<Chip> chips = gda.convertirXlsxADatos();
 			System.setProperty("webdriver.chrome.driver", rutaCD);
 			driver = new ChromeDriver();
+			driver.manage().timeouts().implicitlyWait(20, TimeUnit.SECONDS);
 			driver.get("https://miportal.entel.cl/");
 			// posible sleep
 			boolean primeraVez = true;
@@ -53,20 +55,18 @@ public class Compra {
 					Date date = new Date();
 					String url = driver.getCurrentUrl();
 					int chance = 6;
-					while (!existsElementByClass(driver, "text")) {
-						Thread.sleep(600);
-						chance--;
-					}
-					if (!existsElementByClass(driver, "text") && intentos < 3) {
-						driver.close();
-						driver = new ChromeDriver();
-						driver.get("https://miportal.entel.cl/");
-						System.out.println( "Intento de retomar compras tras caida de la pagina");
-						i--;
-						intentos++;
-						continue;
-					}
-					
+
+//					caso de que no cargue el menu principal
+//						driver.close();
+//						driver = new ChromeDriver();
+//						driver.manage().timeouts().implicitlyWait(20, TimeUnit.SECONDS);
+//						driver.get("https://miportal.entel.cl/");
+//						System.out.println( "Intento de retomar compras tras caida de la pagina");
+//						i--;
+//						intentos++;
+//						continue;
+//					
+
 					if (!iniciarSesion(driver, url, chips.get(i))) {
 						modificarDatosDe(chips.get(i), chips.get(i).getSaldo(), chips.get(i).getSaldo(), date,
 								"Problema inicio de sesión");
@@ -75,8 +75,6 @@ public class Compra {
 					url = driver.getCurrentUrl();
 
 					// Obtiene el saldo anterior a la compra y valida que no supere el saldo
-					while (!existsElementByXPath(driver, "//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2"))
-						Thread.sleep(400);
 					String saldoString = driver
 							.findElement(By.xpath("//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2"))
 							.getText();
@@ -84,8 +82,6 @@ public class Compra {
 					if (primeraVez) {
 						primeraVez = false;
 						seleccionarBolsa(driver, url);
-						while (!existsElementByXPath(driver, "//*[@id=\"Voz\"]/div/div[2]/div[2]"))
-							Thread.sleep(600);
 						String total = driver.findElement(By.xpath("//*[@id=\"Voz\"]/div/div[2]/div[2]")).getText();
 						valorCompra = obtenerValorEnInt(total);
 					}
@@ -96,7 +92,7 @@ public class Compra {
 						if (driver.getCurrentUrl().equals(url))
 							seleccionarBolsa(driver, url);
 						int nuevoSaldo = terminarProcesoDeCompra(driver, saldoString, url);
-						if(nuevoSaldo == -1 && intentos < 3) {
+						if (nuevoSaldo == -1 && intentos < 3) {
 							i--;
 							intentos++;
 							continue;
@@ -108,9 +104,19 @@ public class Compra {
 					e.printStackTrace();
 					JOptionPane.showMessageDialog(new JFrame(), "Error al cargar componentes");
 				} catch (WebDriverException e2) {
+					if(intentos < 3) {
 					e2.printStackTrace();
-					JOptionPane.showMessageDialog(new JFrame(), "Caída inesperada de internet/servidor");
-					break;
+					System.out.println("Caída inesperada de internet/servidor");
+					if(!chips.get(i).fueComprado())
+						i--;
+					driver.close();
+					driver = new ChromeDriver();
+					driver.manage().timeouts().implicitlyWait(20, TimeUnit.SECONDS);
+					driver.get("https://miportal.entel.cl/");
+					System.out.println("Intento de retomar compras tras caida de la pagina");
+					intentos++;
+					continue;
+					} else break;
 				} catch (Exception e3) {
 					e3.printStackTrace();
 					Logger registro = Logger.getLogger("MyLog");
@@ -161,8 +167,6 @@ public class Compra {
 		driver.findElement(By.xpath("//*[@id=\"mobileAssetBalance\"]/div/div/a[2]/span")).click();
 		while (driver.getCurrentUrl().equals(url))
 			Thread.sleep(600);
-		while (!existsElementByXPath(driver, "//*[@id=\"tab_prepago\"]/div/a"))
-			Thread.sleep(400);
 		driver.findElement(By.xpath("//*[@id=\"tab_prepago\"]/div/a")).click();
 		driver.findElement(By.xpath("//*[@id=\"prepago\"]/div/div[1]/div[2]/div[1]/form/div/div[3]/div/input")).click();
 		driver.findElement(By.xpath("//*[@id=\"prepago\"]/div/div[1]/div[2]/div[1]/form/div/div[1]/div/input")).click();
@@ -190,30 +194,28 @@ public class Compra {
 			Thread.sleep(400);
 			driver.findElement(By.id("action-PROFILE_LOGOUT")).click();
 		}
-		Thread.sleep(2000);
+		Thread.sleep(3000);
 	}
 
 	private static int terminarProcesoDeCompra(WebDriver driver, String saldoString, String url)
 			throws InterruptedException, ParseException {
 		driver.findElement(By.xpath("//*[@id=\"prepago\"]/div/div[2]/div[2]/div[2]/span[2]/input")).click();
 		driver.findElement(By.xpath("//*[@id=\"prepago\"]/div/div[2]/div[2]/div[2]/span[2]/span[3]")).click();
-
+		
+//		si el de abajo falla probar con el enlace: https://miportal.entel.cl/bolsas/confirmacion-compra-bolsas
+//		if(!existsElementByClass(driver, "bagsPurchaseConfirm font-white")) {
+//				driver.get("https://miportal.entel.cl/miEntel/mi-cuenta");
+//			seleccionarBolsa(driver, url);
+//			return terminarProcesoDeCompra(driver, saldoString, url);
+//		}
 		// Revisa si la compra se realizó exitosamente
 		Thread.sleep(9000);
 		int times = 4;
-		// lo de abajo lanza excepción, hay que buscar el elemento antes de usarlo
 		do {
 			driver.get("https://miportal.entel.cl/miEntel/mi-cuenta");
-			int chance = 6;
-			while (!existsElementByXPath(driver, "//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2")
-					&& chance > 0) {
-				Thread.sleep(600);
-				System.out.println("entra a buscar el elemento de la pantalla");
-				chance--;
-			}
-			if(!verificarCaidaServerOInternet("//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2",
-					"https://miportal.entel.cl/miEntel/mi-cuenta", driver))
-				return -1;
+//			if(!verificarCaidaServerOInternet("//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2",
+//					"https://miportal.entel.cl/miEntel/mi-cuenta", driver))
+//				return -1;
 			if (!driver.findElement(By.xpath("//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2")).getText()
 					.equals(saldoString))
 				break;
@@ -225,32 +227,32 @@ public class Compra {
 		return obtenerValorEnInt(saldoReciente);
 	}
 
-	private static boolean verificarCaidaServerOInternet(String xpath, String page, WebDriver driver)
-			throws InterruptedException {
-		boolean correcto = true;
-		if (!existsElementByXPath(driver, xpath))
-			driver.get(page);
-		int chance = 6;
-		while (!existsElementByXPath(driver, xpath) && chance > 0) {
-			Thread.sleep(600);
-			chance--;
-		}
-		if (!existsElementByXPath(driver, xpath)) {
-			correcto = false;
-			driver.close();
-			driver = new ChromeDriver();
-			driver.get("https://miportal.entel.cl/");
-			JOptionPane.showMessageDialog(new JFrame(), "Intento de retomar compras tras caida de la pagina");
-		}
-		return correcto;
-	}
+//	private static boolean verificarCaidaServerOInternet(String xpath, String page, WebDriver driver)
+//			throws InterruptedException {
+//		boolean correcto = true;
+//		if (!existsElementByXPath(driver, xpath))
+//			driver.get(page);
+//		int chance = 6;
+//		while (!existsElementByXPath(driver, xpath) && chance > 0) {
+//			Thread.sleep(600);
+//			chance--;
+//		}
+//		if (!existsElementByXPath(driver, xpath)) {
+//			correcto = false;
+//			driver.close();
+//			driver = new ChromeDriver();
+//			driver.manage().timeouts().implicitlyWait(20, TimeUnit.SECONDS);
+//			driver.get("https://miportal.entel.cl/");
+//			System.out.println("Intento de retomar compras tras caida de la pagina");
+//		}
+//		return correcto;
+//	}
 
 //	/html/body/h1 <= bad request
 //	/html/body/p
 	private static boolean iniciarSesion(WebDriver driver, String url, Chip entrada) throws InterruptedException {
 		driver.findElement(By.className("text")).click();
 		String subWin = null;
-		Thread.sleep(800);
 		ingresarDatosDeSesion(driver, entrada, url);
 
 		if (driver.getCurrentUrl().equals(url)) {
@@ -259,13 +261,28 @@ public class Compra {
 			driver.findElement(By.name("password")).clear();
 			ingresarDatosDeSesion(driver, entrada, url);
 		}
+//		if(existsElementByClass(driver, "modal-content"))
+//			driver.findElement(By.className("icon-close-overly")).click();
 		driver.navigate().refresh();
 		if (driver.getCurrentUrl().equals(url))
 			return false;
 		return true;
 	}
 
+	private static boolean existsElementByClass(WebDriver driver, String string) {
+	driver.manage().timeouts().implicitlyWait(2, TimeUnit.SECONDS);
+	try {
+		driver.findElement(By.className(string));
+		driver.manage().timeouts().implicitlyWait(20, TimeUnit.SECONDS);
+		System.out.println("regresa tiempo de 20");
+	} catch (Exception e) {
+		return false;
+	}
+	return true;
+}
+
 	private static void ingresarDatosDeSesion(WebDriver driver, Chip entrada, String url) throws InterruptedException {
+		Thread.sleep(600);
 		driver.findElement(By.name("username")).sendKeys("" + entrada.getNumeroSim());
 		driver.findElement(By.name("rutt")).sendKeys("" + entrada.getRut());
 		driver.findElement(By.name("password")).sendKeys("" + entrada.getClave());
@@ -278,39 +295,4 @@ public class Compra {
 		}
 	}
 
-	private static boolean existsElementByClass(WebDriver driver, String className) {
-		try {
-			driver.findElement(By.className(className));
-		} catch (NoSuchElementException e) {
-			return false;
-		}
-		return true;
-	}
-
-	private static boolean existsElementByXPath(WebDriver driver, String xpath) {
-		try {
-			driver.findElement(By.xpath(xpath));
-		} catch (NoSuchElementException e) {
-			return false;
-		}
-		return true;
-	}
-
-	private static boolean existsElementByName(WebDriver driver, String name) {
-		try {
-			driver.findElement(By.name(name));
-		} catch (NoSuchElementException e) {
-			return false;
-		}
-		return true;
-	}
-
-	private static boolean existsElementById(WebDriver driver, String id) {
-		try {
-			driver.findElement(By.id(id));
-		} catch (NoSuchElementException e) {
-			return false;
-		}
-		return true;
-	}
 }

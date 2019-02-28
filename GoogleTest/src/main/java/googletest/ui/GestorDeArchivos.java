@@ -149,7 +149,7 @@ public class GestorDeArchivos {
 							break;
 						case SALDO_FINAL:
 							if (cell.getStringCellValue().length() > 3 && cell.getStringCellValue().length() < 6)
-								saldo = Integer.parseInt(formato.format(cell.getNumericCellValue()));
+								saldo = Integer.parseInt(cell.getStringCellValue());
 							break;
 						}
 					}
