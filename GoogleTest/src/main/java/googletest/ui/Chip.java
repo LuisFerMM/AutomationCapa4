@@ -17,11 +17,14 @@ public class Chip {
 	private boolean fueComprado;
 	private Date fechaVencimiento;
 	private String postCompra;
+	private int oportunidades;
 	
 	public Chip(int numeroLista, int numeroSim, String rut, String clave, int saldo, Date fechaInicio, Date horaCompra,
 			Date fechaVencimiento) {
 		super();
 		fueComprado = false;
+		postCompra = "";
+		oportunidades = 2;
 		this.numeroLista = numeroLista;
 		this.numeroSim = numeroSim;
 		this.setRut(rut);
@@ -145,6 +148,14 @@ public class Chip {
 
 	public void setEstadoCompra(boolean fueComprado) {
 		this.fueComprado = fueComprado;
+	}
+
+	public int getOportunidades() {
+		return oportunidades;
+	}
+
+	public void pierdeOportunidad() {
+		oportunidades--;
 	}
 
 }

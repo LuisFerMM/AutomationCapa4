@@ -238,4 +238,7 @@ public class GestorDeArchivos {
 		}
 	}
 
+	public ArrayList<Chip> getChips() {
+		return chips;
+	}
 }

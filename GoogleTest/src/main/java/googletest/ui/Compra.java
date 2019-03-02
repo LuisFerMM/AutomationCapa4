@@ -16,15 +16,18 @@ import java.util.logging.Logger;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
+import org.apache.xmlbeans.GDate;
 import org.openqa.selenium.By;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.support.ui.Sleeper;
 
 public class Compra {
 
 	private static int valorCompra;
+	private static GestorDeArchivos gda;
 
 	public static void main(String[] args) throws ParseException, InterruptedException {
 
@@ -32,7 +35,7 @@ public class Compra {
 
 		WebDriver driver = null;
 
-		GestorDeArchivos gda = new GestorDeArchivos();
+		gda = new GestorDeArchivos();
 
 		File cd = gda.getFileChromeDriver();
 		File excel = gda.getFileExcel();
@@ -79,19 +82,24 @@ public class Compra {
 							.findElement(By.xpath("//*[@id=\"mobileAssetBalance\"]/div/div/div[1]/div/div/h2"))
 							.getText();
 					int saldoInt = obtenerValorEnInt(saldoString);
+					if(chips.get(i).fueComprado())
+						if(saldoInt != chips.get(i).getSaldo()) {
+							modificarDatosDe(chips.get(i), chips.get(i).getSaldo(), saldoInt, date, "Ok");
+							continue;
+						}
 					if (primeraVez) {
-						primeraVez = false;
-						seleccionarBolsa(driver, url);
+						seleccionarBolsa(driver);
 						String total = driver.findElement(By.xpath("//*[@id=\"Voz\"]/div/div[2]/div[2]")).getText();
 						valorCompra = obtenerValorEnInt(total);
+						primeraVez = false;
 					}
 					if (saldoInt < valorCompra) {
 						cerrarSesion(driver);
 						modificarDatosDe(chips.get(i), saldoInt, saldoInt, date, "Saldo insuficiente");
 					} else {
 						if (driver.getCurrentUrl().equals(url))
-							seleccionarBolsa(driver, url);
-						int nuevoSaldo = terminarProcesoDeCompra(driver, saldoString, url);
+							seleccionarBolsa(driver);
+						int nuevoSaldo = terminarProcesoDeCompra(driver, saldoString, url, 1, i);
 						if (nuevoSaldo == -1 && intentos < 3) {
 							i--;
 							intentos++;
@@ -104,19 +112,26 @@ public class Compra {
 					e.printStackTrace();
 					JOptionPane.showMessageDialog(new JFrame(), "Error al cargar componentes");
 				} catch (WebDriverException e2) {
-					if(intentos < 3) {
-					e2.printStackTrace();
-					System.out.println("Caída inesperada de internet/servidor");
-					if(!chips.get(i).fueComprado())
-						i--;
-					driver.close();
-					driver = new ChromeDriver();
-					driver.manage().timeouts().implicitlyWait(20, TimeUnit.SECONDS);
-					driver.get("https://miportal.entel.cl/");
-					System.out.println("Intento de retomar compras tras caida de la pagina");
-					intentos++;
-					continue;
-					} else break;
+					if (intentos < 6) {
+						e2.printStackTrace();
+						System.out.println("Caída inesperada de internet/servidor");
+						if (!chips.get(i).getPostCompra().equals("Ok")) {
+							chips.get(i).pierdeOportunidad();
+							if (chips.get(i).getOportunidades() == 0) {
+								modificarDatosDe(chips.get(i), chips.get(i).getSaldo(), chips.get(i).getSaldo(), new Date(), "Problema relacionado con la página");
+								i++;
+							}
+							i--;
+						}
+						driver.quit();
+						driver = new ChromeDriver();
+						driver.manage().timeouts().implicitlyWait(20, TimeUnit.SECONDS);
+						driver.get("https://miportal.entel.cl/");
+						System.out.println("Intento de retomar compras tras caida de la pagina");
+						intentos++;
+						continue;
+					} else
+						break;
 				} catch (Exception e3) {
 					e3.printStackTrace();
 					Logger registro = Logger.getLogger("MyLog");
@@ -140,7 +155,7 @@ public class Compra {
 			}
 			gda.generarExcel();
 		}
-		driver.close();
+		driver.quit();
 		System.exit(0);
 	}
 
@@ -163,10 +178,8 @@ public class Compra {
 				+ fechaInicio.format(fechaActual) + " " + seCompro);
 	}
 
-	private static void seleccionarBolsa(WebDriver driver, String url) throws InterruptedException {
+	private static void seleccionarBolsa(WebDriver driver) throws InterruptedException {
 		driver.findElement(By.xpath("//*[@id=\"mobileAssetBalance\"]/div/div/a[2]/span")).click();
-		while (driver.getCurrentUrl().equals(url))
-			Thread.sleep(600);
 		driver.findElement(By.xpath("//*[@id=\"tab_prepago\"]/div/a")).click();
 		driver.findElement(By.xpath("//*[@id=\"prepago\"]/div/div[1]/div[2]/div[1]/form/div/div[3]/div/input")).click();
 		driver.findElement(By.xpath("//*[@id=\"prepago\"]/div/div[1]/div[2]/div[1]/form/div/div[1]/div/input")).click();
@@ -197,17 +210,25 @@ public class Compra {
 		Thread.sleep(3000);
 	}
 
-	private static int terminarProcesoDeCompra(WebDriver driver, String saldoString, String url)
+	private static int terminarProcesoDeCompra(WebDriver driver, String saldoString, String url, int intento, int i)
 			throws InterruptedException, ParseException {
 		driver.findElement(By.xpath("//*[@id=\"prepago\"]/div/div[2]/div[2]/div[2]/span[2]/input")).click();
 		driver.findElement(By.xpath("//*[@id=\"prepago\"]/div/div[2]/div[2]/div[2]/span[2]/span[3]")).click();
-		
-//		si el de abajo falla probar con el enlace: https://miportal.entel.cl/bolsas/confirmacion-compra-bolsas
-//		if(!existsElementByClass(driver, "bagsPurchaseConfirm font-white")) {
-//				driver.get("https://miportal.entel.cl/miEntel/mi-cuenta");
-//			seleccionarBolsa(driver, url);
-//			return terminarProcesoDeCompra(driver, saldoString, url);
-//		}
+
+		int validaciones = 0;
+		while (!driver.getCurrentUrl().equals("https://miportal.entel.cl/bolsas/confirmacion-compra-bolsas")
+				&& validaciones < 6) {
+			Thread.sleep(600);
+			validaciones++;
+		}
+		if (!driver.getCurrentUrl().equals("https://miportal.entel.cl/bolsas/confirmacion-compra-bolsas") && intento < 2) {
+			intento++;
+			driver.get("https://miportal.entel.cl/miEntel/mi-cuenta");
+			seleccionarBolsa(driver);
+			return terminarProcesoDeCompra(driver, saldoString, url, intento, i);
+		} else if (driver.getCurrentUrl().equals("https://miportal.entel.cl/bolsas/confirmacion-compra-bolsas")){
+			gda.getChips().get(i).setEstadoCompra(true);
+		}
 		// Revisa si la compra se realizó exitosamente
 		Thread.sleep(9000);
 		int times = 4;
@@ -268,18 +289,6 @@ public class Compra {
 			return false;
 		return true;
 	}
-
-	private static boolean existsElementByClass(WebDriver driver, String string) {
-	driver.manage().timeouts().implicitlyWait(2, TimeUnit.SECONDS);
-	try {
-		driver.findElement(By.className(string));
-		driver.manage().timeouts().implicitlyWait(20, TimeUnit.SECONDS);
-		System.out.println("regresa tiempo de 20");
-	} catch (Exception e) {
-		return false;
-	}
-	return true;
-}
 
 	private static void ingresarDatosDeSesion(WebDriver driver, Chip entrada, String url) throws InterruptedException {
 		Thread.sleep(600);
